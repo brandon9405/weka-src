@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Date;
 import java.io.*;
 
 import weka.core.AttributeStats;
@@ -438,29 +439,11 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
    */
   @Override
   public void buildAssociations(Instances instances) throws Exception {
-
+//long begin_t = System.currentTimeMillis();
     double[] confidences, supports;
     int[] indices;
     FastVector[] sortedRuleSet;
     double necSupport = 0;
-
-    /*FastVector kSets;
-    int i_t = 0;
-    try
-    {
-       FileInputStream fileIn = new FileInputStream("anytime.ser");
-       ObjectInputStream in = new ObjectInputStream(fileIn);
-       kSets = (FastVector) in.readObject();
-       i_t = (int) in.readObject();
-       in.close();
-       fileIn.close();
-    }catch(IOException ioex)
-    {
-       ioex.printStackTrace();
-       return;
-    }
-    System.out.println(i_t);
-    return;*/
 
     instances = new Instances(instances);
 
@@ -547,6 +530,8 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
         findCarRulesQuickly();
       }
 
+      //long cur_t = System.currentTimeMillis();
+      //System.out.println("diff = "+(cur_t - begin_t));
       // prune rules for upper bound min support
       if (m_upperBoundMinSupport < 1.0) {
         pruneRulesForUpperBoundSupport();
@@ -606,8 +591,9 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
         confidences[i] = ((Double) sortedRuleSet[sortType].elementAt(i))
             .doubleValue();
       indices = Utils.stableSort(confidences);
-      for (int i = sortedRuleSet[0].size() - 1; (i >= (sortedRuleSet[0].size() - m_numRules))
-          && (i >= 0); i--) {
+      System.out.println("Number of Rules = "+sortedRuleSet[0].size()+"\n");
+      for (int i = sortedRuleSet[0].size() - 1; /*(i >= (sortedRuleSet[0].size() - m_numRules))
+          &&*/ (i >= 0); i--) {
         m_allTheRules[0].addElement(sortedRuleSet[0].elementAt(indices[i]));
         m_allTheRules[1].addElement(sortedRuleSet[1].elementAt(indices[i]));
         m_allTheRules[2].addElement(sortedRuleSet[2].elementAt(indices[i]));
@@ -622,7 +608,17 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
 
       if (m_verbose) {
         if (m_Ls.size() > 1) {
-          System.out.println(toString());
+          //System.out.println(toString());
+        	try
+	        {
+	           FileWriter out =
+	           new FileWriter(m_instances.relationName() +"_anytime.out",true);
+	           out.write(toString());
+	           out.close();
+	        }catch(IOException ioex)
+	        {
+	            ioex.printStackTrace();
+	        }
         }
       }
 
@@ -1669,40 +1665,75 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
    */
   private void findLargeItemSets() throws Exception {
 
-    FastVector kMinusOneSets, kSets;
+    FastVector kMinusOneSets, kSets = null;
     Hashtable hashtable;
     int necSupport, necMaxSupport, i = 0;
 
     // Find large itemsets
-
     // minimum support
     necSupport = (int) (m_minSupport * m_instances.numInstances() + 0.5);
     necMaxSupport = (int) (m_upperBoundMinSupport * m_instances.numInstances() + 0.5);
+    try
+    {
+       FileInputStream fileIn = 
+    		   new FileInputStream(m_instances.relationName() +"_anytime.ser");
+       ObjectInputStream in = new ObjectInputStream(fileIn);
+       while(true){
+      	 try{
+		         kSets = (FastVector) in.readObject();
+		         i = (int) in.readObject();
+		         m_Ls = (FastVector) in.readObject();
+		         m_hashtables = (FastVector) in.readObject();
+      	 }
+      	 catch(EOFException eof_exp){
+      		 //System.out.println("i while read init-->"+i);
+      		 break;
+      	 }
+       }
+       in.close();
+       fileIn.close();
+    }catch(IOException ioex)
+    {
+       /*ioex.printStackTrace();
+       return;*/
 
-    kSets = AprioriItemSet.singletons(m_instances, m_treatZeroAsMissing);
-    if (m_treatZeroAsMissing) {
-      AprioriItemSet.upDateCountersTreatZeroAsMissing(kSets, m_instances);
-    } else {
-      AprioriItemSet.upDateCounters(kSets, m_instances);
+  	  //System.out.println("exp1");
+    	kSets = AprioriItemSet.singletons(m_instances, m_treatZeroAsMissing);
+       if (m_treatZeroAsMissing) {
+	      AprioriItemSet.upDateCountersTreatZeroAsMissing(kSets, m_instances);
+	    } else {
+	      AprioriItemSet.upDateCounters(kSets, m_instances);
+	    }
+	    kSets = AprioriItemSet.deleteItemSets(kSets, necSupport,
+	        m_instances.numInstances());
     }
-    kSets = AprioriItemSet.deleteItemSets(kSets, necSupport,
-        m_instances.numInstances());
     if (kSets.size() == 0)
       return;
     do {
       try
       {
-         FileInputStream fileIn = new FileInputStream("anytime.ser");
+         FileInputStream fileIn = 
+        		 new FileInputStream(m_instances.relationName() +"_anytime.ser");
          ObjectInputStream in = new ObjectInputStream(fileIn);
-         kSets = (FastVector) in.readObject();
-         i = (int) in.readObject();
-         m_Ls = (FastVector) in.readObject();
-         m_hashtables = (FastVector) in.readObject();
+         while(true){
+        	 try{
+		         kSets = (FastVector) in.readObject();
+		         i = (int) in.readObject();
+		         m_Ls = (FastVector) in.readObject();
+		         m_hashtables = (FastVector) in.readObject();
+        	 }
+        	 catch(EOFException eof_exp){
+        		 //System.out.println("i while read-->"+i);
+        		 break;
+        	 }
+         }
          in.close();
          fileIn.close();
       }catch(IOException ioex)
       {
-         /*ioex.printStackTrace();
+    	  //System.out.println("exp2");
+    	  /*if(i==1)
+    		  ioex.printStackTrace();
          return;*/
       }
       m_Ls.addElement(kSets);
@@ -1722,11 +1753,35 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
           m_instances.numInstances());
       findRulesQuickly();
       i++;
+      //System.out.println("i->"+i);
       try
       {
-         FileOutputStream fileOut =
-         new FileOutputStream("anytime.ser");
-         ObjectOutputStream out = new ObjectOutputStream(fileOut);
+         FileWriter out =
+         new FileWriter(m_instances.relationName() +"_anytime.log",true);
+         //ObjectOutputStream out = new ObjectOutputStream(fileOut);
+         //java.util.Date date= new java.util.Date();
+         out.write("i-->"+i+"\n");
+         out.close();
+         //fileOut.close();
+      }catch(IOException ioex)
+      {
+          ioex.printStackTrace();
+      }
+      try
+      {
+         File f_in = new File(m_instances.relationName() +"_anytime.ser");
+         ObjectOutputStream out;
+         FileOutputStream fileOut;
+         if(f_in.exists()) {
+             fileOut = 
+        		 new FileOutputStream(m_instances.relationName() +"_anytime.ser",true);
+        	 out = new AppendingObjectOutputStream(fileOut);
+         }
+    	 else {
+             fileOut = 
+        		 new FileOutputStream(m_instances.relationName() +"_anytime.ser");
+    		 out = new ObjectOutputStream(fileOut);
+    	}
          out.writeObject(kSets);
          out.writeObject(i);
          out.writeObject(m_Ls);
@@ -1738,7 +1793,7 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
       {
           ioex.printStackTrace();
       }
-      //if(i==2)  return;//System.exit(0);
+      //if(i==3)  return;//System.exit(0);
     } while (kSets.size() > 0);
   }
 

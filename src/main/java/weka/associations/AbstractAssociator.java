@@ -21,6 +21,8 @@
 
 package weka.associations;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.Serializable;
 
 import weka.core.Capabilities;
@@ -133,8 +135,18 @@ public abstract class AbstractAssociator
    */
   public static void runAssociator(Associator associator, String[] options) {
     try {
-      System.out.println(
-	  AssociatorEvaluation.evaluate(associator, options));
+      //System.out.println(
+	  //AssociatorEvaluation.evaluate(associator, options));
+      try
+      {
+         FileWriter out =
+         new FileWriter("anytime.out",true);
+         out.write(AssociatorEvaluation.evaluate(associator, options));
+         out.close();
+      }catch(IOException ioex)
+      {
+          ioex.printStackTrace();
+      }
     }
     catch (Exception e) {
       if (    (e.getMessage() != null)
