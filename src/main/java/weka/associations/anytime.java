@@ -34,7 +34,7 @@ public class anytime {
       new NewThread(args); // create a new thread
       try {
         System.out.println("Main Thread: ");
-        Thread.sleep(6000);
+        Thread.sleep(40000);
         System.exit(0);
       } catch (InterruptedException e) {
          System.out.println("Main thread interrupted.");

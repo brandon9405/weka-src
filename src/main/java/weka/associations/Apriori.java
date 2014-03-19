@@ -1669,6 +1669,7 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
     
     Hashtable hashtable;
     int necSupport, necMaxSupport, i = 0;
+    String serFileName = "output/"+m_instances.relationName() +"_anytime";
 
     // Find large itemsets
     // minimum support
@@ -1677,32 +1678,40 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
     
     /*Crash recovery*/
     int log_i=0;
-    try{
+    try {
     	FileReader in =
-         new FileReader(m_instances.relationName() +"_anytime.log");
-        log_i = in.read();
+         new FileReader("output/"+m_instances.relationName() +"_anytime.log");
+    	BufferedReader br_in = new BufferedReader(in);
+    	String line = "", prev = "";
+    	while((line = br_in.readLine()) != null && line != "") prev = line;
+    	if(prev != "") {
+	    	String words[] = prev.split(" ");
+			log_i = Integer.parseInt(words[1]);
+			String end = "End";
+			if(words[0].compareTo(end) != 0)
+				log_i--;
+    	}
         in.close();
     }
-    catch(IOException ioex){
+    catch(IOException ioex) {
     	;
     }
     
-    FastVector rec_kSets, rec_mLs, rec_mhash;
+    /*FastVector rec_kSets, rec_mLs, rec_mhash;
     int rec_i;
-    try
-    {
+    try {
        FileInputStream fileIn = 
-      		 new FileInputStream(m_instances.relationName() +"_anytime.ser");
+      		 new FileInputStream("output/"+m_instances.relationName() +"_anytime.ser");
        ObjectInputStream in = new ObjectInputStream(fileIn);
        int count=0;
-       while(log_i-1<count){
-      	 try{
+       while(log_i-1<count) {
+      	 try {
 		         rec_kSets = (FastVector) in.readObject();
 		         rec_i = (int) in.readObject();
 		         rec_mLs = (FastVector) in.readObject();
 		         rec_mhash = (FastVector) in.readObject();
       	 }
-      	 catch(EOFException eof_exp){
+      	 catch(EOFException eof_exp) {
       		 //System.out.println("i while read-->"+i);
       		 //eof_exp.printStackTrace();
       		 break;
@@ -1711,35 +1720,34 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
        }
        in.close();
        fileIn.close();
-    }catch(IOException ioex)
-    {
+    }catch(IOException ioex) {
   	  //System.out.println("exp2");
-  	  /*if(i==1)
-  		  ioex.printStackTrace();*/
-       /*return;*/
-    }
+//  	  if(i==1)
+//  		  ioex.printStackTrace();
+       //return;
+    }*/
     
-    try
-    {
+    try {
        FileInputStream fileIn = 
-    		   new FileInputStream(m_instances.relationName() +"_anytime.ser");
+    		   new FileInputStream(serFileName+(log_i % 2)+".ser");
        ObjectInputStream in = new ObjectInputStream(fileIn);
-       while(true){
-      	 try{
+//       while(true){
+//      	 try{
 		         kSets = (FastVector) in.readObject();
 		         i = (int) in.readObject();
 		         m_Ls = (FastVector) in.readObject();
 		         m_hashtables = (FastVector) in.readObject();
-      	 }
-      	 catch(EOFException eof_exp){
-      		 //System.out.println("i while read init-->"+i);
-      		 break;
-      	 }
-       }
+		         //m_allTheRules = (FastVector[]) in.readObject();
+//      	 }
+//      	 catch(EOFException eof_exp){
+//      		 //System.out.println("i while read init-->"+i);
+//      		 break;
+//      	 }
+//       }
        in.close();
        fileIn.close();
-    }catch(IOException ioex)
-    {
+    }
+    catch(IOException ioex) {
        /*ioex.printStackTrace();
        return;*/
 
@@ -1756,33 +1764,31 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
     if (kSets.size() == 0)
       return;
     do {
-      try
-      {
+      /*try {
          FileInputStream fileIn = 
-        		 new FileInputStream(m_instances.relationName() +"_anytime.ser");
+        		 new FileInputStream(serFileName+(i % 2)+".ser");
          ObjectInputStream in = new ObjectInputStream(fileIn);
-         while(true){
-        	 try{
+//         while(true){
+//        	 try{
 		         kSets = (FastVector) in.readObject();
 		         i = (int) in.readObject();
 		         m_Ls = (FastVector) in.readObject();
 		         m_hashtables = (FastVector) in.readObject();
-        	 }
-        	 catch(EOFException eof_exp){
-        		 //System.out.println("i while read-->"+i);
-        		 //eof_exp.printStackTrace();
-        		 break;
-        	 }
-         }
+//        	 }
+//        	 catch(EOFException eof_exp){
+//        		 //System.out.println("i while read-->"+i);
+//        		 //eof_exp.printStackTrace();
+//        		 break;
+//        	 }
+//         }
          in.close();
          fileIn.close();
-      }catch(IOException ioex)
-      {
+      }catch(IOException ioex) {
     	  //System.out.println("exp2");
-    	  /*if(i==1)
-    		  ioex.printStackTrace();*/
-         /*return;*/
-      }
+//    	  if(i==1)
+//    		  ioex.printStackTrace();
+//         return;
+      }*/
       m_Ls.addElement(kSets);
       kMinusOneSets = kSets;
       kSets = AprioriItemSet.mergeAllItemSets(kMinusOneSets, i,
@@ -1801,42 +1807,47 @@ public class Apriori extends AbstractAssociator implements OptionHandler,
       findRulesQuickly();
       i++;
       System.out.println("i->"+i);
-      try
-      {
+      try {
          FileWriter out =
-         new FileWriter(m_instances.relationName() +"_anytime.log",true);
-         out.write("i-->"+i+"\n");
+         new FileWriter("output/"+m_instances.relationName() +"_anytime.log",true);
+         out.write("Start "+i+"\n");
          out.close();
-      }catch(IOException ioex)
-      {
+      }catch(IOException ioex) {
           ioex.printStackTrace();
       }
-      try
-      {
-         File f_in = new File(m_instances.relationName() +"_anytime.ser");
+      try {
+         File f_in = new File(serFileName+(i % 2)+".ser");
          ObjectOutputStream out;
          FileOutputStream fileOut;
-         if(f_in.exists()) {
+         /*if(f_in.exists()) {
              fileOut = 
-        		 new FileOutputStream(m_instances.relationName() +"_anytime.ser",true);
+        		 new FileOutputStream(serFileName+(i % 2)+".ser",true);
         	 out = new AppendingObjectOutputStream(fileOut);
          }
-    	 else {
+    	 else {*/
              fileOut = 
-        		 new FileOutputStream(m_instances.relationName() +"_anytime.ser");
+        		 new FileOutputStream(serFileName+(i % 2)+".ser");
     		 out = new ObjectOutputStream(fileOut);
-    	}
+    	//}
          out.writeObject(kSets);
          out.writeObject(i);
          out.writeObject(m_Ls);
          out.writeObject(m_hashtables);
+         //out.writeObject(m_allTheRules);
          out.close();
          fileOut.close();
          //System.out.printf("Serialized data is saved in anytime.ser\n");
-      }catch(IOException ioex)
-      {
-          ioex.printStackTrace();
       }
+      catch(IOException ioex) {
+          ioex.printStackTrace();
+      }try {
+          FileWriter out =
+          new FileWriter("output/"+m_instances.relationName() +"_anytime.log",true);
+          out.write("End "+i+"\n");
+          out.close();
+       }catch(IOException ioex) {
+           ioex.printStackTrace();
+       }
       //if(i==3)  return;//System.exit(0);
     } while (kSets.size() > 0);
   }

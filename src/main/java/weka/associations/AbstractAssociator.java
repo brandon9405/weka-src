@@ -140,8 +140,18 @@ public abstract class AbstractAssociator
       try
       {
          FileWriter out =
-         new FileWriter("anytime.out",true);
-         out.write(AssociatorEvaluation.evaluate(associator, options));
+         new FileWriter("output/anytime.out",true);
+
+         long startTime;
+         long endTime;
+         
+         // build associations
+         startTime = System.currentTimeMillis();
+         String result = AssociatorEvaluation.evaluate(associator, options);
+         out.write(result);
+         endTime = System.currentTimeMillis();
+     System.out.println("\n=== Evaluation ===\n\nElapsed time: " 
+         + (((double) (endTime - startTime)) / 1000) + "s\n");
          out.close();
       }catch(IOException ioex)
       {

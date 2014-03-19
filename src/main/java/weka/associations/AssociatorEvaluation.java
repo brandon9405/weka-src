@@ -193,9 +193,9 @@ public class AssociatorEvaluation
     endTime = System.currentTimeMillis();
 
     m_Result = new StringBuffer(associator.toString());
-    m_Result.append("\n=== Evaluation ===\n\n");
+    /*m_Result.append("\n=== Evaluation ===\n\n");
     m_Result.append("Elapsed time: " + (((double) (endTime - startTime)) / 1000) + "s");
-    m_Result.append("\n");
+    m_Result.append("\n");*/
     
     return m_Result.toString();
   }
