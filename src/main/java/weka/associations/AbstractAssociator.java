@@ -137,26 +137,16 @@ public abstract class AbstractAssociator
     try {
       //System.out.println(
 	  //AssociatorEvaluation.evaluate(associator, options));
-      try
-      {
-         FileWriter out =
-         new FileWriter("output/anytime.out",true);
+      
+    	long startTime;
+    	long endTime;
 
-         long startTime;
-         long endTime;
-         
-         // build associations
-         startTime = System.currentTimeMillis();
-         String result = AssociatorEvaluation.evaluate(associator, options);
-         out.write(result);
-         endTime = System.currentTimeMillis();
-     System.out.println("\n=== Evaluation ===\n\nElapsed time: " 
-         + (((double) (endTime - startTime)) / 1000) + "s\n");
-         out.close();
-      }catch(IOException ioex)
-      {
-          ioex.printStackTrace();
-      }
+    	// build associations
+    	startTime = System.currentTimeMillis();
+    	String result = AssociatorEvaluation.evaluate(associator, options);
+    	endTime = System.currentTimeMillis();
+    	System.out.println("\n=== Evaluation ===\n\nElapsed time: " 
+    			+ (((double) (endTime - startTime)) / 1000) + "s\n");
     }
     catch (Exception e) {
       if (    (e.getMessage() != null)
