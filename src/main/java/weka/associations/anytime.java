@@ -36,10 +36,8 @@ class NewThread extends Thread {
 
 public class anytime {
    public static void main(String[] args) throws Throwable {
-      new NewThread(args); // create a new thread
+      final Thread anytimeApriori = new NewThread(args); // create a new thread
       try {
-        System.out.println("Main Thread: ");
-        Thread.sleep(15000);
         
         /*String trainFileString = Utils.getOption('t', args);
         DataSource loader = new DataSource(trainFileString);
@@ -124,6 +122,23 @@ public class anytime {
         {
             ioex.printStackTrace();
         }*/
+    	final Thread mainThread = Thread.currentThread();
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+		    public void run() {
+		        Apriori.keepRunning = false;
+		        try {
+		        	System.out.println("joining...");
+		        	anytimeApriori.join();
+		        	System.out.println("joined.");
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		    }
+		});
+    	System.out.println("Main Thread: ");
+        Thread.sleep(20000);
+    	System.out.println("stopping...");
         System.exit(0);
       } catch (InterruptedException e) {
          System.out.println("Main thread interrupted.");

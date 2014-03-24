@@ -21,6 +21,15 @@
 
 package weka.associations;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -486,12 +495,29 @@ public class ItemSet implements Serializable, RevisionHandler {
    * @param itemSets the set of item sets which are to be updated
    * @param instances the instances to be used for updating the counters
    */
-  public static void upDateCounters(FastVector itemSets, Instances instances) {
-
-    for (int i = 0; i < instances.numInstances(); i++) {
+  public static void upDateCounters(FastVector itemSets, Instances instances, int tmp) {
+	/*if(Apriori.keepRunning && tmp != 0)
+		System.out.println("running");*/
+    for (int i = tmp ; i < instances.numInstances()  && Apriori.keepRunning; i++) {
       Enumeration enu = itemSets.elements();
       while (enu.hasMoreElements())
         ((ItemSet) enu.nextElement()).upDateCounter(instances.instance(i));
+      if(!Apriori.keepRunning){
+    	  System.out.println("bookKeeping");
+    	  try {
+    		  FileOutputStream fileOut = new FileOutputStream("output/"+
+						instances.relationName()+"_anytime.cntr");
+				ObjectOutputStream out = new ObjectOutputStream(fileOut);
+				out.writeObject(itemSets);
+				out.writeObject(i+1);
+				out.close();
+				fileOut.close();
+			}
+			catch(IOException ioex) {
+				;//ioex.printStackTrace();
+			}
+    	  Thread.currentThread().stop();
+      }
     }
   }
 

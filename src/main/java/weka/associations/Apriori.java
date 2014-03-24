@@ -180,6 +180,8 @@ import weka.filters.unsupervised.attribute.Remove;
 public class Apriori extends AbstractAssociator implements OptionHandler,
 AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 
+	/* for graceful exit*/
+	public static volatile boolean keepRunning = true;
 	/** for serialization */
 	static final long serialVersionUID = 3277498842319212687L;
 
@@ -1655,6 +1657,7 @@ AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 	 */
 	private void findLargeItemSets() throws Exception {
 
+		//System.out.println("In findLargeItemSets");
 		FastVector kMinusOneSets, kSets = null;
 
 		Hashtable hashtable;
@@ -1717,6 +1720,7 @@ AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 		}
 
 
+		//System.out.println("before Setting 1-itemsets");
 		try {
 			FileInputStream fileIn = 
 					new FileInputStream(serFileName+(log_i % 2)+".ser");
@@ -1729,15 +1733,29 @@ AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 			fileIn.close();
 		}
 		catch(IOException ioex) {
+			int tmp_cntr = 0;
+			if(!(new File(serFileName+".cntr")).exists()){
 			kSets = AprioriItemSet.singletons(m_instances, m_treatZeroAsMissing);
+			}
+			else{
+				FileInputStream fileIn = new FileInputStream(serFileName+".cntr");
+				ObjectInputStream in = new ObjectInputStream(fileIn);
+				kSets = (FastVector) in.readObject();
+				tmp_cntr = (int) in.readObject();
+				in.close();
+				fileIn.close();
+				File f = new File(serFileName+".cntr");
+				f.delete();
+			}
 			if (m_treatZeroAsMissing) {
 				AprioriItemSet.upDateCountersTreatZeroAsMissing(kSets, m_instances);
 			} else {
-				AprioriItemSet.upDateCounters(kSets, m_instances);
+				AprioriItemSet.upDateCounters(kSets, m_instances, tmp_cntr);
 			}
 			kSets = AprioriItemSet.deleteItemSets(kSets, necSupport,
 					m_instances.numInstances());
 		}
+		//System.out.println("before recoverRules");
 		if(recoverRules){
 			findRulesQuickly();
 			try {
@@ -1795,27 +1813,44 @@ AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 		}
 		if (kSets.size() == 0)
 			return;
+		//System.out.println("before Do loop");
 		do {
+			System.out.println("i->"+i);
 			for(int for_i=0;for_i<6;for_i++)
 				m_allTheRules[for_i].removeAllElements();
 			m_Ls.addElement(kSets);
 			kMinusOneSets = kSets;
-			kSets = AprioriItemSet.mergeAllItemSets(kMinusOneSets, i,
-					m_instances.numInstances());
 			hashtable = AprioriItemSet.getHashtable(kMinusOneSets,
 					kMinusOneSets.size());
 			m_hashtables.addElement(hashtable);
+			int tmp_cntr = 0;
+			if(!(new File(serFileName+".cntr")).exists()){
+			kSets = AprioriItemSet.mergeAllItemSets(kMinusOneSets, i,
+					m_instances.numInstances());
 			kSets = AprioriItemSet.pruneItemSets(kSets, hashtable);
+			}
+			else{
+				FileInputStream fileIn = new FileInputStream(serFileName+".cntr");
+				ObjectInputStream in = new ObjectInputStream(fileIn);
+				kSets = (FastVector) in.readObject();
+				tmp_cntr = (int) in.readObject();
+				in.close();
+				fileIn.close();
+				File f = new File(serFileName+".cntr");
+				f.delete();
+			}
 			if (m_treatZeroAsMissing) {
 				AprioriItemSet.upDateCountersTreatZeroAsMissing(kSets, m_instances);
 			} else {
-				AprioriItemSet.upDateCounters(kSets, m_instances);
+				AprioriItemSet.upDateCounters(kSets, m_instances, tmp_cntr);
 			}
+			if(!keepRunning)
+				System.out.println("After bookKeeping");
 			kSets = AprioriItemSet.deleteItemSets(kSets, necSupport,
 					m_instances.numInstances());
 			findRulesQuickly();
 			i++;
-			System.out.println("i->"+i);
+			//System.out.println("i->"+i);
 			try {
 				FileWriter out = new FileWriter(serFileName+".log",true);
 				out.write("Start "+i+"\n");
@@ -1871,8 +1906,9 @@ AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 				ioex.printStackTrace();
 			}
 			prevNumRules += m_allTheRules[0].size();
+			System.out.println("end_i->"+i+" kSets.size->"+kSets.size());
 			//if(i==3)  return;//System.exit(0);
-		} while (kSets.size() > 0);
+		} while (kSets.size() > 0 && keepRunning);
 	}
 
 	public String rulesToString(int prevNumRules) {
@@ -2209,6 +2245,7 @@ AssociationRulesProducer, CARuleMiner, TechnicalInformationHandler {
 	 * @param args the commandline options
 	 */
 	public static void main(String[] args) {
+		
 		runAssociator(new Apriori(), args);
 	}
 }
