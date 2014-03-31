@@ -21,6 +21,11 @@
 
 package weka.associations;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,6 +43,7 @@ import java.util.Vector;
 import weka.core.Attribute;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
+import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Option;
@@ -1271,17 +1277,46 @@ public class FPGrowth extends AbstractAssociator
   protected FPTreeRoot buildFPTree(ArrayList<BinaryItem> singletons,
       Object dataSource, int minSupport) throws Exception {
     
-    FPTreeRoot tree = new FPTreeRoot();    
+    FPTreeRoot tree = new FPTreeRoot(); 
     Instances data = null;
+    int tmp = 0;
+   
     if (dataSource instanceof Instances) {
       data = (Instances)dataSource;
     } else if (dataSource instanceof weka.core.converters.ArffLoader) {
       data = ((weka.core.converters.ArffLoader)dataSource).getStructure();
     }
-    
+    String serFileName = "output/FPGrowth"+data.relationName()+"_anytime";
+     try {
+		FileInputStream fileIn = 
+				new FileInputStream(serFileName+".ser");
+		ObjectInputStream in = new ObjectInputStream(fileIn);
+		tmp = (int) in.readObject();
+		tree = (FPTreeRoot) in.readObject();
+		in.close();
+		fileIn.close();
+	}
+	catch(IOException ioex) {
+		;
+	}
     if (dataSource instanceof Instances) {
-      for (int i = 0; i < data.numInstances(); i++) {
+      for (int i = tmp; i < data.numInstances(); i++) {
         insertInstance(data.instance(i), singletons, tree, minSupport);
+        if(i == 1000000){
+        	System.out.println("instance");
+        	try {
+        		FileOutputStream fileOut = new FileOutputStream(serFileName+".ser");
+        		ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        		out.writeObject(i+1);
+        		out.writeObject(tree);
+        		out.close();
+        		fileOut.close();
+        	}
+        	catch(IOException ioex) {
+        		;//ioex.printStackTrace();
+        	}
+        	System.exit(0);
+        }
       }
     } else if (dataSource instanceof weka.core.converters.ArffLoader) {
       weka.core.converters.ArffLoader loader = 
@@ -1291,6 +1326,19 @@ public class FPGrowth extends AbstractAssociator
       while ((current = loader.getNextInstance(data)) != null) {
         insertInstance(current, singletons, tree, minSupport);
         count++;
+        /*if(count == 5000){
+        	try {
+        		FileOutputStream fileOut = new FileOutputStream(serFileName+".ser");
+        		ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        		out.writeObject(i);
+        		out.writeObject(tree);
+        		out.close();
+        		fileOut.close();
+        	}
+        	catch(IOException ioex) {
+        		;//ioex.printStackTrace();
+        	}
+        }*/
         if (count % m_offDiskReportingFrequency == 0) {
           System.err.println("build tree done: " + count);
         }
@@ -2250,13 +2298,14 @@ public class FPGrowth extends AbstractAssociator
       : m_delta;
       
     //double currentSupport = upperBoundMinSuppAsFraction;
-    double currentSupport = 1.0;
+    //double currentSupport = 1.0;
+    double currentSupport = m_lowerBoundMinSupport;
              
     if (m_findAllRulesForSupportLevel) {
       currentSupport = lowerBoundMinSuppAsFraction;
     }
         
-    do {
+    //do {
       if (arffLoader) {
         ((weka.core.converters.ArffLoader)source).reset();
       }
@@ -2269,8 +2318,16 @@ public class FPGrowth extends AbstractAssociator
       if (arffLoader) {
         System.err.println("Building FP-tree...");
       }
+
+  	long startTime;
+  	long endTime;
+      startTime = System.currentTimeMillis();
       FPTreeRoot tree = buildFPTree(singletons, source, currentSupportAsInstances);
       
+  	endTime = System.currentTimeMillis();
+  	System.out.println("\n=== Evaluation ===\n\nElapsed time: " 
+  			+ (((double) (endTime - startTime)) / 1000) + "s\n");
+  	
       FrequentItemSets largeItemSets = new FrequentItemSets(m_numInstances);
       
       if (arffLoader) {
@@ -2306,9 +2363,9 @@ public class FPGrowth extends AbstractAssociator
       }
       
       if (!m_findAllRulesForSupportLevel) {
-        if (breakOnNext) {
+        /*if (breakOnNext) {
           break;
-        }
+        }*/
         currentSupport -= deltaAsFraction;
 //        System.err.println("currentSupport " + currentSupport + " lowBoundAsFrac " + lowerBoundMinSuppAsFraction);
         if (currentSupport < lowerBoundMinSuppAsFraction) {
@@ -2316,18 +2373,19 @@ public class FPGrowth extends AbstractAssociator
             // ensure that the lower bound does get evaluated
             currentSupport = lowerBoundMinSuppAsFraction;
             breakOnNext = true;
-          } else {
+          } /*else {
             break;
-          }
+          }*/
         }
-      } else {
+      } /*else {
         // just break out of the loop as we are just finding all rules
         // with a minimum support + metric
         break;
-      }      
-    } while (m_rules.size() < m_numRulesToFind);
+      }      */
+    //} while (m_rules.size() < m_numRulesToFind);
     
     Collections.sort(m_rules);
+    System.out.println(toString());
   }
 
   /**
