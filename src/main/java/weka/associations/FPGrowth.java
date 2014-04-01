@@ -159,6 +159,9 @@ public class FPGrowth extends AbstractAssociator
     /** the support of this item set **/
     protected int m_support;
     
+    /** if rule generated using this item set*/
+    protected boolean m_rulegen = false;
+    
     /**
      * Constructor
      * 
@@ -182,12 +185,30 @@ public class FPGrowth extends AbstractAssociator
     }
     
     /**
+     * Set the m_rulegen for this item set.
+     * 
+     * @param rulegen the rulegen for this item set.
+     */
+    public void setRulegen(boolean rulegen){
+    	m_rulegen = rulegen;
+    }
+    
+    /**
      * Set the support for this item set.
      * 
      * @param support the support for this item set.
      */
     public void setSupport(int support) {
       m_support = support;
+    }
+    
+    /**
+     * Get the rulegen of this item set.
+     * 
+     * @return the rulegen of this item set.
+     */
+    public boolean getRulegen() {
+      return m_rulegen;
     }
     
     /**
@@ -315,6 +336,14 @@ public class FPGrowth extends AbstractAssociator
     public void addItemSet(FrequentBinaryItemSet setToAdd) {
       m_sets.add(setToAdd);
     }
+    /**
+     * Remove an item set.
+     * 
+     * @param SetToRemove the item set to remove
+     */
+    public void removeItemSet(FrequentBinaryItemSet setToRemove){
+    	m_sets.remove(setToRemove);
+    }   
     
     /**
      * Sort the item sets according to the supplied comparator.
@@ -898,30 +927,35 @@ public class FPGrowth extends AbstractAssociator
     	System.out.println("item");
       FrequentBinaryItemSet fis = setI.next();
       frequencyLookup.put(fis.getItems(), fis.getSupport());
-      if (fis.getItems().size() > 1) {
+      if (fis.getItems().size() > 1 && !fis.getRulegen()) {
         // generate all the possible subsets for the premise
         boolean[] subset = new boolean[fis.getItems().size()];
         Collection<Item> premise = null;
         Collection<Item> consequence = null;
         while ((premise = getPremise(fis, subset)) != null) {
         	System.out.println("while"+premise.toString());
-          if (premise.size() > 0 && premise.size() < fis.getItems().size()) {
+          if (premise.size() > 0 && premise.size() < fis.getItems().size() 
+        		  && frequencyLookup.containsKey(premise) ) {
             consequence = getConsequence(fis, subset);
-            int totalSupport = fis.getSupport();
-            int supportPremise = frequencyLookup.get(premise).intValue();
-        	  System.out.println("if");
-            int supportConsequence = frequencyLookup.get(consequence).intValue();
-            
-            // a candidate rule
-            DefaultAssociationRule candidate = 
-              new DefaultAssociationRule(premise, consequence, metricToUse, supportPremise,
-                  supportConsequence, totalSupport, totalTransactions);
-            if (candidate.getPrimaryMetricValue() > metricThreshold &&
-                candidate.getTotalSupport() >= lowerBoundMinSuppAsInstances &&
-                candidate.getTotalSupport() <= upperBoundMinSuppAsInstances) {
-              // accept this rule
-              rules.add(candidate);
-            }              
+            if(frequencyLookup.containsKey(consequence)){
+            	int totalSupport = fis.getSupport();
+            	int supportPremise = frequencyLookup.get(premise).intValue();
+            	System.out.println("if");
+            	int supportConsequence = frequencyLookup.get(consequence).intValue();
+
+            	// a candidate rule
+            	DefaultAssociationRule candidate = 
+            			new DefaultAssociationRule(premise, consequence, metricToUse, 
+            					supportPremise, supportConsequence, totalSupport, 
+            					totalTransactions);
+            	if (candidate.getPrimaryMetricValue() > metricThreshold &&
+            			candidate.getTotalSupport() >= lowerBoundMinSuppAsInstances &&
+            			candidate.getTotalSupport() <= upperBoundMinSuppAsInstances) {
+            		// accept this rule
+            		rules.add(candidate);
+            	}
+            	fis.setRulegen(true);
+            }
           }
           nextSubset(subset);
         System.out.println("item"+fis.toString());
@@ -1422,7 +1456,13 @@ public class FPGrowth extends AbstractAssociator
       int recursionLevel, FrequentBinaryItemSet conditionalItems, int minSupport, 
       Vector<BinaryItem> completedTree) {
     String serFileName = "output/FPGrowth_anytime.ser";
-    
+    int upperBoundMinSuppAsInstances = (m_upperBoundMinSupport > 1) 
+    		? (int) m_upperBoundMinSupport
+			: (int)Math.ceil(m_upperBoundMinSupport * m_numInstances);
+
+	int lowerBoundMinSuppAsInstances = (m_lowerBoundMinSupport > 1)
+			? (int)m_lowerBoundMinSupport
+			: (int)Math.ceil(m_lowerBoundMinSupport * m_numInstances);
     System.out.println("level->"+recursionLevel+"completed->"+completedTree.size());
     if (!tree.isEmpty(recursionLevel)) {
       if (m_maxItems > 0 && recursionLevel >= m_maxItems) {
@@ -1507,6 +1547,10 @@ public class FPGrowth extends AbstractAssociator
         				+"count "+completedTree.size());
         		largeItemSets.addItemSet(newConditional);
         		if(!keepRunning){
+        			m_rules = generateRulesBruteForce(largeItemSets, m_metric, 
+        		            m_metricThreshold, upperBoundMinSuppAsInstances, 
+        		            lowerBoundMinSuppAsInstances, m_numInstances);
+        			System.out.println(toString());
         			try {
     			      System.out.println("inside"+completedTree.size()+
     							"large->"+largeItemSets.size());
@@ -1524,10 +1568,6 @@ public class FPGrowth extends AbstractAssociator
         				;//ioex.printStackTrace();
         			}
         			
-        			/*m_rules = generateRulesBruteForce(largeItemSets, m_metric, 
-        		            m_metricThreshold, upperBoundMinSuppAsInstances, 
-        		            lowerBoundMinSuppAsInstances, m_numInstances);
-        			System.out.println(toString());*/
         			Thread.currentThread().stop();
         		}
         	}
@@ -1560,6 +1600,10 @@ public class FPGrowth extends AbstractAssociator
         }
       }
       if(!keepRunning){
+			m_rules = generateRulesBruteForce(largeItemSets, m_metric, 
+		            m_metricThreshold, upperBoundMinSuppAsInstances, 
+		            lowerBoundMinSuppAsInstances, m_numInstances);
+			System.out.println(toString());
 			try {
 				System.out.println("outside"+completedTree.size()+
 						"large->"+largeItemSets.size());
@@ -1576,10 +1620,6 @@ public class FPGrowth extends AbstractAssociator
 			catch(IOException ioex) {
 				;//ioex.printStackTrace();
 			}
-			/*m_rules = generateRulesBruteForce(largeItemSets, m_metric, 
-		            m_metricThreshold, upperBoundMinSuppAsInstances, 
-		            lowerBoundMinSuppAsInstances, m_numInstances);
-			System.out.println(toString());*/
 			Thread.currentThread().stop();
 		}
     }
@@ -2437,7 +2477,6 @@ public class FPGrowth extends AbstractAssociator
   			+ (((double) (endTime - startTime)) / 1000) + "s\n");
   	//System.out.println(graph(tree));
       FrequentItemSets largeItemSets = new FrequentItemSets(m_numInstances);
-      //FrequentItemSets largeItemSetsold = new FrequentItemSets(m_numInstances);
       if (arffLoader) {
         System.err.println("Mining tree for min supp " + currentSupport);
       }
@@ -2461,7 +2500,7 @@ public class FPGrowth extends AbstractAssociator
     	  completedTree = (Vector<BinaryItem>) in.readObject();
     	  in.close();
     	  fileIn.close();
-    	  System.out.println(completedTree);
+    	  //System.out.println(completedTree);
     	  restarting = true;
       }
       catch(IOException ioex) {
@@ -2471,9 +2510,6 @@ public class FPGrowth extends AbstractAssociator
     		  completedTree);      
 
       System.out.println("mining completed."+largeItemSets.size());
-      /*Iterator<FrequentBinaryItemSet> setI = largeItemSetsold.iterator();
-      while(setI.hasNext())
-    	  largeItemSets.addItemSet(setI.next());*/
       m_largeItemSets = largeItemSets;
       
       if (arffLoader) {
@@ -2488,7 +2524,7 @@ public class FPGrowth extends AbstractAssociator
             m_metricThreshold, upperBoundMinSuppAsInstances, 
             lowerBoundMinSuppAsInstances, m_numInstances);
 
-      System.out.println("rule generation completed.");
+      //System.out.println("rule generation completed.");
       if (arffLoader) {
         System.err.println("Number of rules found " + m_rules.size());
       }
